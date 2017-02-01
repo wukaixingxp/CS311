@@ -112,11 +112,8 @@ void renLookFrom(renRenderer *ren, double position[3], double phi,
 void renUpdateViewing(renRenderer *ren) {
     double viewing[4][4];
     double proj[4][4];
-    depthBuffer depthB = *ren->depth;
+    mat44Viewport(ren->depth->width, ren->depth->height, ren->viewport);
     mat44InverseIsometry(ren->cameraRotation, ren->cameraTranslation, viewing);
-    // for (int i = 0; i< 6;i++){
-    //     printf("%f\n",ren->projection[i]);
-    // }
     if (ren->projectionType == renORTHOGRAPHIC){
         mat44Orthographic(ren->projection[renPROJL], ren->projection[renPROJR],
             ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJN], 
@@ -127,8 +124,23 @@ void renUpdateViewing(renRenderer *ren) {
             ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJN], 
             ren->projection[renPROJF],proj);  
     }
-    //mat44Print(proj);
-    //mat44Print(ren->viewing); 
     mat444Multiply(proj, viewing, ren->viewing);
-    mat44Viewport(depthB.width, depthB.height, ren->viewport);
+
+
 }
+
+// void renUpdateViewing(renRenderer *ren) {
+//     double proj[4][4];
+//     double camera[4][4];
+//     mat44Viewport(ren->depth->width, ren->depth->height, ren->viewport);
+//     mat44InverseIsometry(ren->cameraRotation, ren->cameraTranslation, camera);
+//     if (ren->projectionType == renORTHOGRAPHIC){
+//         //printf("here!!!!!!!");
+//         mat44Orthographic(ren->projection[renPROJL], ren->projection[renPROJR],ren->projection[renPROJB], 
+//             ren->projection[renPROJT], ren->projection[renPROJF], ren->projection[renPROJN], proj);
+//     } else if (ren->projectionType == renPERSPECTIVE){
+//         mat44Perspective(ren->projection[renPROJL], ren->projection[renPROJR], ren->projection[renPROJB], 
+//             ren->projection[renPROJT],ren->projection[renPROJF], ren->projection[renPROJN], proj);
+//     }
+//     mat444Multiply(proj,camera, ren->viewing);
+// }

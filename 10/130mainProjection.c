@@ -80,38 +80,65 @@ void updateUniform(renRenderer *ren, double unif[], double unifParent[]) {
     }
 }
 
-/* Writes the vary vector, based on the other parameters. */
-void transformVertex(renRenderer *ren, double unif[], double attr[], double vary[]) {
-    double isometry[4][4];
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++){
-            isometry[i][j] = unif[renUNIFISOMETRY + (i * 4) + j];
-        }
-    }
-    double viewing[4][4];
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++){
-            viewing[i][j] = unif[renUNIFCamera + (i * 4) + j];
-        }
-    }
-    double scene[4][4];
-    mat444Multiply(isometry, viewing, scene);
-    //at44Print(isometry);
-    double V[4];
-    double N[4];
-    double attrXYZ[4] = {attr[renATTRX], attr[renATTRY], attr[renATTRZ], 1};
-    mat441Multiply(scene, attrXYZ, V);
-    mat441Multiply(ren->viewport, V, N);
-    //printf("%f\n", attrXYZ[0]);
-    vary[renVARYX] = N[0]/N[3]; 
-    vary[renVARYY] = N[1]/N[3];
-    vary[renVARYZ] = N[2]/N[3];
-    vary[renVARYS] = attr[renATTRS];
-    vary[renVARYT] = attr[renATTRT];
+// /* Writes the vary vector, based on the other parameters. */
+// void transformVertex(renRenderer *ren, double unif[], double attr[], double vary[]) {
+//     double isometry[4][4];
+//     double N[4];
+//     double attrXYZ[4] = {attr[renATTRX], attr[renATTRY], attr[renATTRZ], 1};
+//     for (int i = 0; i < 4; i++) {
+//         for (int j = 0; j < 4; j++){
+//             isometry[i][j] = unif[renUNIFISOMETRY + (i * 4) + j];
+//         }
+//     }
+//     double viewing[4][4];
+//     for (int i = 0; i < 4; i++) {
+//         for (int j = 0; j < 4; j++){
+//             viewing[i][j] = unif[renUNIFCamera + (i * 4) + j];
+//         }
+//     }
+//     double scene[4][4];
+//     mat441Multiply(isometry, attrXYZ, N);
+//     double V[4];
+//     mat441Multiply(scene, N, V);
+//     V[0] = V[0]/ (V[3]); 
+//     V[1] = V[1]/ (V[3]);
+//     V[2] = V[2]/ (V[3]);
+//     mat441Multiply(ren->viewport, V, vary);
+//     vary[renVARYS] = attr[renATTRS];
+//     vary[renVARYT] = attr[renATTRT];
 
-    // for (int i = 0; i< 3;i++){
-    //     printf("%d    %f\n",i, vary[i]);
-    // }
+//     for (int i = 0; i< 3;i++){
+//         printf("%d    %f\n",i, vary[i]);
+//     }
+// }
+void transformVertex(renRenderer *ren, double unif[], double attr[], 
+        double vary[]) {
+    /*Then perform the viewport transformation. */
+    /* First, copy attr S and T to vary. */
+
+    /* Then, do the modeling and viewing transformation. */
+    double toBeTransformed[4] = {attr[renATTRX], attr[renATTRY], attr[renATTRZ], 1};
+    double transformed1[4], transformed2[4], transformed3[4];
+    mat441Multiply((double(*)[4])(&unif[renUNIFISOMETRY]), toBeTransformed, transformed1);
+    mat441Multiply((double(*)[4])(&unif[renUNIFCamera]), transformed1, transformed2); 
+    
+    printf("Transform2 is: {%f, %f, %f, %f}\n", transformed2[0], transformed2[1], transformed2[2], transformed2[3]);
+    vecScale(4, 1/transformed2[3], transformed2, transformed2);
+    mat441Multiply(ren->viewport, transformed2, transformed3);
+    //printf("Viewport is: {%f, %f, %f, %f}\n", ren->viewport[0][0], ren->viewport[0][1], ren->viewport[0][2], ren->viewport[0][3]);
+    vary[renVARYX] = transformed3[0];
+    vary[renVARYY] = transformed3[1];
+    vary[renVARYZ] = transformed3[2];
+    vary[3] = transformed3[3];
+    //printf("Vary is: {%f, %f, %f, %f}\n", vary[0], vary[1], vary[2], vary[3]);
+    vary[renVARYS] = attr[renATTRS];
+    vary[renVARYT] = attr[renATTRT];   
+    /* Assign the transformed screen coordinates to vary. */
+    // vary[renVARYX] = transformed2[0];
+    // vary[renVARYY] = transformed2[1];
+    // vary[renVARYZ] = transformed2[2];
+    // vary[renVARYW] = transformed2[3];
+    //printf("Vary is: {%f, %f, %f, %f}\n", vary[0], vary[1], vary[2], vary[3]);
 }
 
 /* Sets rgb, based on the other parameters, which are unaltered. attr is an 
@@ -169,7 +196,7 @@ renRenderer ren = {
         {0, 0, 0, 1}
     },
     .cameraTranslation = {0, 0, 0},
-    .projection = {-100, -1, 0, 0, 0, 0},
+    .projection = {0, 512, 0, 512, 0, 512},
     .projectionType = 0,
     .viewport = {
         {1, 0, 0, 0},
@@ -219,29 +246,29 @@ void handleKeyUp(int key, int shiftIsDown, int controlIsDown,
 void handleTimeStep(double oldTime, double newTime) {
     // for animations
     renUpdateViewing(&ren);
-    // static char inc = 1;
-    // root.unif[renUNIFTHETA] += 1;
-    // child.unif[renUNIFTHETA] += 2;
-    // grandChild.unif[renUNIFTHETA] += 4;
-    // if (inc) {
-    //     root.unif[renUNIFR] += 0.1;
-    //     child.unif[renUNIFB] -= 0.1;
-    //     grandChild.unif[renUNIFR] += 0.1;
-    //     grandChild.unif[renUNIFG] += 0.1;
-    //     // root.unif[renUNIFTRANSX] += 10;
-    //     if (root.unif[renUNIFR] >= 1.0) {
-    //         inc = 0;
-    //     }
-    // } else {
-    //     root.unif[renUNIFR] -= 0.1;
-    //     child.unif[renUNIFB] += 0.1;
-    //     grandChild.unif[renUNIFR] -= 0.1;
-    //     grandChild.unif[renUNIFG] -= 0.1;
-    //     // root.unif[renUNIFTRANSX] -= 10;
-    //     if (root.unif[renUNIFR] <= 0.0) {
-    //         inc = 1;
-    //     }
-    // }
+    static char inc = 1;
+    root.unif[renUNIFTHETA] += 1;
+    child.unif[renUNIFTHETA] += 2;
+    grandChild.unif[renUNIFTHETA] += 4;
+    if (inc) {
+        root.unif[renUNIFR] += 0.1;
+        child.unif[renUNIFB] -= 0.1;
+        grandChild.unif[renUNIFR] += 0.1;
+        grandChild.unif[renUNIFG] += 0.1;
+        // root.unif[renUNIFTRANSX] += 10;
+        if (root.unif[renUNIFR] >= 1.0) {
+            inc = 0;
+        }
+    } else {
+        root.unif[renUNIFR] -= 0.1;
+        child.unif[renUNIFB] += 0.1;
+        grandChild.unif[renUNIFR] -= 0.1;
+        grandChild.unif[renUNIFG] -= 0.1;
+        // root.unif[renUNIFTRANSX] -= 10;
+        if (root.unif[renUNIFR] <= 0.0) {
+            inc = 1;
+        }
+    }
     draw();
 }
 
@@ -264,7 +291,7 @@ int main() {
         // init depth buffer
         depthInitialize(&depth, 512, 512);
         // inti ren->projection
-        renSetFrustum(&ren, 1, 3.1415/6.0, 10.0, 10.0);
+        //renSetFrustum(&ren, 1, 3.1415/6.0, 10.0, 10.0);
         // init unif
         double unifRoot[renATTRDIMBOUND] = {
             0.0, 0.0, 0.0,
