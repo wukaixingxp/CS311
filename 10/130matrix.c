@@ -11,62 +11,8 @@
  * Jan 28 2017
  */
 
-/* Builds a 4x4 matrix representing orthographic projection with a boxy viewing 
-volume [left, right] x [bottom, top] x [far, near]. That is, on the near plane 
-the box is the rectangle R = [left, right] x [bottom, top], and on the far 
-plane the box is the same rectangle R. Keep in mind that 0 > near > far. Maps 
-the viewing volume to [-1, 1] x [-1, 1] x [-1, 1]. */
-void mat44Orthographic(double left, double right, double bottom, double top, 
-        double far, double near, double proj[4][4]){
-  	for (int i = 0; i < 3; i++) {
-  		for (int j = 0; j < 3; j++) {
-  			proj[i][j] = 0;
-  		}
-  	}
-	proj[0][0] = 2/(right - left);
-	proj[1][1] = 2/(top - bottom);
-	proj[2][2] = 2/(near - far);
-	proj[2][3] = (near + far)/(far - near);
-	proj[0][3] = (right + left)/(left - right);
-	proj[1][3] = (top + bottom)/(bottom - top);
-	proj[3][3] = 1;
-}
-/* Builds a 4x4 matrix that maps a projected viewing volume 
-[-1, 1] x [-1, 1] x [-1, 1] to screen [0, w - 1] x [0, h - 1] x [-1, 1]. */
-void mat44Viewport(double width, double height, double view[4][4]){
-	for (int i = 0; i < 3; i++) {
-  		for (int j = 0; j < 3; j++) {
-  			view[i][j] = 0;
-  		}
-  	}
-  	view[0][0] = (width - 1)/ 2;
-  	view[0][3] = (width - 1)/ 2;
-  	view[1][1] = (height - 1)/ 2;
-  	view[1][3] = (height - 1)/ 2;
-  	view[2][2] = 1;
-  	view[3][3] = 1;
-}
-/* Builds a 4x4 matrix representing perspective projection. The viewing frustum 
-is contained between the near and far planes, with 0 > near > far. On the near 
-plane, the frustum is the rectangle R = [left, right] x [bottom, top]. On the 
-far plane, the frustum is the rectangle (far / near) * R. Maps the viewing 
-volume to [-1, 1] x [-1, 1] x [-1, 1]. */
-void mat44Perspective(double left, double right, double bottom, double top, 
-        double far, double near, double proj[4][4]){
-	for (int i = 0; i < 3; i++) {
-  		for (int j = 0; j < 3; j++) {
-  			proj[i][j] = 0;
-  		}
-  	}
-	proj[0][0] = -(2 * near) / (right - left);
-	proj[1][1] = -(2 * near) / (top - bottom);
-	proj[2][2] = (near + far) / (far - near);
-	proj[0][2] = (right + left) / (right - left);
-	proj[1][2] = (top + bottom) / (top - bottom); 
-	proj[3][2] =  -1;
-	proj[2][3] =  (2 * near * far) / (near - far);	
 
-}
+ 
 
 /* Multiplies the 3x3 matrix m by the 3x3 matrix n. */
 void mat333Multiply(double m[3][3], double n[3][3], double mTimesN[3][3]) {
@@ -273,6 +219,62 @@ void mat44InverseIsometry(double rot[3][3], double trans[3], double isom[4][4]){
 	isom[2][3] = -temp[2];
 }
 
+/* Builds a 4x4 matrix representing orthographic projection with a boxy viewing 
+volume [left, right] x [bottom, top] x [far, near]. That is, on the near plane 
+the box is the rectangle R = [left, right] x [bottom, top], and on the far 
+plane the box is the same rectangle R. Keep in mind that 0 > near > far. Maps 
+the viewing volume to [-1, 1] x [-1, 1] x [-1, 1]. */
+void mat44Orthographic(double left, double right, double bottom, double top, 
+        double far, double near, double proj[4][4]){
+  	for (int i = 0; i < 3; i++) {
+  		for (int j = 0; j < 3; j++) {
+  			proj[i][j] = 0;
+  		}
+  	}
+	proj[0][0] = 2/(right - left);
+	proj[1][1] = 2/(top - bottom);
+	proj[2][2] = 2/(near - far);
+	proj[2][3] = (near + far)/(far - near);
+	proj[0][3] = (right + left)/(left - right);
+	proj[1][3] = (top + bottom)/(bottom - top);
+	proj[3][3] = 1;
+}
+/* Builds a 4x4 matrix that maps a projected viewing volume 
+[-1, 1] x [-1, 1] x [-1, 1] to screen [0, w - 1] x [0, h - 1] x [-1, 1]. */
+void mat44Viewport(double width, double height, double view[4][4]){
+	for (int i = 0; i < 3; i++) {
+  		for (int j = 0; j < 3; j++) {
+  			view[i][j] = 0;
+  		}
+  	}
+  	view[0][0] = (width - 1)/ 2;
+  	view[0][3] = (width - 1)/ 2;
+  	view[1][1] = (height - 1)/ 2;
+  	view[1][3] = (height - 1)/ 2;
+  	view[2][2] = 1;
+  	view[3][3] = 1;
+}
+/* Builds a 4x4 matrix representing perspective projection. The viewing frustum 
+is contained between the near and far planes, with 0 > near > far. On the near 
+plane, the frustum is the rectangle R = [left, right] x [bottom, top]. On the 
+far plane, the frustum is the rectangle (far / near) * R. Maps the viewing 
+volume to [-1, 1] x [-1, 1] x [-1, 1]. */
+void mat44Perspective(double left, double right, double bottom, double top, 
+         double far, double near, double proj[4][4]){
+	for (int i = 0; i < 3; i++) {
+  		for (int j = 0; j < 3; j++) {
+  			proj[i][j] = 0;
+  		}
+  	}
+	proj[0][0] = -(2 * near) / (right - left);
+	proj[1][1] = -(2 * near) / (top - bottom);
+	proj[2][2] = (near + far) / (far - near);
+	proj[0][2] = (right + left) / (right - left);
+	proj[1][2] = (top + bottom) / (top - bottom); 
+	proj[3][2] =  -1;
+	proj[2][3] =  (2 * near * far) / (near - far);	
+	mat44Print(proj);
+}
 // int main() {
 
 // 	double mat[4][4];

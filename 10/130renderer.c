@@ -122,7 +122,7 @@ void renUpdateViewing(renRenderer *ren) {
     else{
         mat44Perspective(ren->projection[renPROJL], ren->projection[renPROJR],
             ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJN], 
-            ren->projection[renPROJF],proj);  
+            ren->projection[renPROJF],proj);    
     }
     mat444Multiply(proj, viewing, ren->viewing);
 
