@@ -48,8 +48,6 @@ void vec3Cross(double v[3], double w[3], double vCrossW[3]) {
 rho >= 0.0 is the radius. 0 <= phi <= pi is the co-latitude. -pi <= theta <= pi 
 is the longitude or azimuth. */
 void vec3Spherical(double rho, double phi, double theta, double v[3]) {
-	phi = phi / 180.0 * PI;
-	theta = theta / 180.0 * PI;
 	v[0] = rho * sin(phi) * cos(theta);
 	v[1] = rho * sin(phi) * sin(theta);
 	v[2] = rho * cos(phi);

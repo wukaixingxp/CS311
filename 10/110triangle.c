@@ -78,6 +78,9 @@ char validVert(double a[], double b[], double c[]) {
 
 void triRender(renRenderer *ren, double unif[], texTexture *tex[], double aVary[], double bVary[], double cVary[]) {
     double rgbz[4]; // place to save the color at all positions x
+    // printf("%f   %f    %f  a\n", aVary[0], aVary[1],aVary[2] );
+    // printf("%f   %f    %f  b\n", bVary[0], bVary[1],bVary[2] );
+    // printf("%f   %f    %f  c\n", cVary[0], cVary[1],cVary[2] );
     // preprocess
     double a[ren->varyDim];
     double b[ren->varyDim];

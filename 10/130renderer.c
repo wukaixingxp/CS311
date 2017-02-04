@@ -73,6 +73,8 @@ void renSetFrustum(renRenderer *ren, int projType, double fovy, double focal,
     ren->projection[renPROJR] = ren->projection[renPROJT] * 
         (double)(ren->depth->width) / (double)(ren->depth->height);
     ren->projection[renPROJL] = -ren->projection[renPROJR];
+
+
 }
 
 
@@ -116,15 +118,21 @@ void renUpdateViewing(renRenderer *ren) {
     mat44InverseIsometry(ren->cameraRotation, ren->cameraTranslation, viewing);
     if (ren->projectionType == renORTHOGRAPHIC){
         mat44Orthographic(ren->projection[renPROJL], ren->projection[renPROJR],
-            ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJN], 
-            ren->projection[renPROJF],proj);
+            ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJF], 
+            ren->projection[renPROJN],proj);
     }
     else{
         mat44Perspective(ren->projection[renPROJL], ren->projection[renPROJR],
-            ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJN], 
-            ren->projection[renPROJF],proj);    
+            ren->projection[renPROJB], ren->projection[renPROJT],ren->projection[renPROJF], 
+            ren->projection[renPROJN],proj);    
     }
+    // printf("viewing\n");
+    // mat44Print(viewing);
+    // printf("proj\n");
+    // mat44Print(proj);
     mat444Multiply(proj, viewing, ren->viewing);
+    // printf("ren->viewing\n");
+    // mat44Print(ren->viewing);
 
 
 }

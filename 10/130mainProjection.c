@@ -11,7 +11,7 @@
 #define renATTRN 5
 #define renATTRO 6
 #define renATTRP 7
-#define renATTRDIMBOUND 42
+#define renATTRDIMBOUND 50
 #define renVARYX 0
 #define renVARYY 1
 #define renVARYZ 2
@@ -85,28 +85,25 @@ void transformVertex(renRenderer *ren, double unif[], double attr[], double vary
     double isometry[4][4];
     double N[4];
     double attrXYZ[4] = {attr[renATTRX], attr[renATTRY], attr[renATTRZ], 1};
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++){
-            isometry[i][j] = unif[renUNIFISOMETRY + (i * 4) + j];
-        }
-    }
-    double viewing[4][4];
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++){
-            viewing[i][j] = unif[renUNIFCamera + (i * 4) + j];
-        }
-    }
-    mat441Multiply(isometry, attrXYZ, N);
+    // printf("attrXYZ \n");
+    // printVector(4, attrXYZ);
+    mat441Multiply((double(*)[4])(&unif[renUNIFISOMETRY]), attrXYZ, N);
     double V[4];
-    mat441Multiply(viewing, N, V);
+    mat441Multiply((double(*)[4])(&unif[renUNIFCamera]), N, V);
+    // printf("after modeling \n");
+    // printVector(4, N);
+    printf("after projection \n");
+    printVector(4, V);
     vecScale(4, 1/V[3],V, V);
     mat441Multiply(ren->viewport, V, vary);
+    // printf("after viewport\n");
+    // printVector(4, vary);
     vary[renVARYS] = attr[renATTRS];
     vary[renVARYT] = attr[renATTRT];
 
-    for (int i = 0; i< 3;i++){
-        printf("%d    %f\n",i, vary[i]);
-    }
+    // for (int i = 0; i< 3;i++){
+    //     printf("%d    %f\n",i, vary[i]);
+    // }
 }
 
 // void transformVertex(renRenderer *ren, double unif[], double attr[], 
@@ -192,7 +189,7 @@ renRenderer ren = {
         {0, 0, 0, 1}
     },
     .cameraTranslation = {0, 0, 0},
-    .projection = {0, 512, 0, 512, 0, 512},
+    .projection = {-26.794092, 26.794092, -26.794092, 26.794092, -100.000000, -1.000000},
     .projectionType = 0,
     .viewport = {
         {1, 0, 0, 0},
@@ -281,13 +278,15 @@ int main() {
 
         // init meshes
         // meshInitializeBox(&meshRoot, 0, 200, 0, 200, 0, 200);
-        meshInitializeSphere(&meshRoot, 100, 40, 40);
+        meshInitializeSphere(&meshRoot, 50, 2, 4);
         meshInitializeSphere(&meshChild, 50, 40, 40);
         meshInitializeSphere(&meshGrandChild, 25, 40, 40);
         // init depth buffer
         depthInitialize(&depth, 512, 512);
         // inti ren->projection
-        //renSetFrustum(&ren, renORTHOGRAPHIC, 3.1415/6.0, 100.0, 10.0);
+        double target[3] = {250.0, 250.0, 0.0};
+        renLookAt(&ren, target, 100.0, M_PI / 4.0, M_PI / 4.0);
+        renSetFrustum(&ren, renORTHOGRAPHIC, 3.1415/6.0, 100.0, 10.0);
         // init unif
         double unifRoot[renATTRDIMBOUND] = {
             0.0, 0.0, 0.0,
@@ -334,8 +333,7 @@ int main() {
         // init scenes
         sceneInitialize(&grandChild, &ren, unifGrandChild, texGrandChild, &meshGrandChild, NULL, NULL);
         sceneInitialize(&child, &ren, unifChild, texChild, &meshChild, &grandChild, NULL);
-        sceneInitialize(&root, &ren, unifRoot, texRoot, &meshRoot, &child, NULL);
-        //mat44Print(ren.viewing);
+        sceneInitialize(&root, &ren, unifRoot, texRoot, &meshRoot, NULL, NULL);
 
         // run it
         pixSetKeyUpHandler(handleKeyUp);
