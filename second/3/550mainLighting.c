@@ -2,7 +2,7 @@
 
 
 /* On macOS, compile with...
-    clang 540mainTexturing.c -lglfw -framework OpenGL
+    clang 550mainLighting.c -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -18,20 +18,29 @@
 #include "520camera.c"
 #include "540texture.c"
 #include "540scene.c"
-
-GLdouble alpha = 0.0;
+#include "550light.c"
+/* create all the locations and programs. */
 GLuint program;
 GLint attrLocs[3];
 GLint viewingLoc, modelingLoc;
 GLint unifLocs[1];
 GLint textureLoc[1];
+GLint lightLocs[3];
+GLint camLoc;
+/* create all the structs.*/
 camCamera cam;
+lightLight light;
 texTexture texChild;
 texTexture texRoot;
 texTexture texSibling;
 texTexture *texChildList[1] = {&texChild};
 texTexture *texRootList[1] = {&texRoot};
 texTexture *texSiblingList[1] = {&texSibling};
+/* create all the global attributes. */
+GLdouble alpha = 0.0;
+GLdouble lightTranslation[3] = {100, 100, 200};
+GLdouble lightColor[3] = {1.0, 1.0, 1.0};
+GLdouble lightAtten[3] = {1.0, 0.0, 0.0};
 /* Allocate three meshes and three scene graph nodes. */
 meshGLMesh rootMesh, childMesh, siblingMesh;
 sceneNode rootNode, childNode, siblingNode;
@@ -119,7 +128,7 @@ int initializeScene(void) {
 	sceneSetTranslation(&childNode, trans);
 	vecSet(3, trans, 0.0, 1.0, 0.0);
 	sceneSetTranslation(&siblingNode, trans);
-	GLdouble unif[2] = {1.0, 1.0};
+	GLdouble unif[1] = {1.0};
 	sceneSetUniform(&siblingNode, unif);
 	sceneSetUniform(&childNode, unif);
 	sceneSetUniform(&rootNode, unif);
@@ -182,39 +191,57 @@ GLchar fragmentCode[] = "\
         vec3 diffLight = diffInt * lightCol * surfCol;\
         float shininess = 64.0;\
         vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
-        gl_FragColor = vec4(diffLight + specLight, 1.0);\
+        gl_FragColor = vec4(lightPos ,1.0);\
     }";
-	//rgba * texture2D(texture, st)
+	//gl_FragColor = vec4(diffLight + specLight, 1.0);
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
 		glUseProgram(program);
 		attrLocs[0] = glGetAttribLocation(program, "position");
 		attrLocs[1] = glGetAttribLocation(program, "texCoords");
 		attrLocs[2] = glGetAttribLocation(program, "normal");
+		lightLocs[0] = glGetAttribLocation(program, "lightPos");
+		lightLocs[1] = glGetAttribLocation(program, "lightCol");
+		lightLocs[2] = glGetAttribLocation(program, "lightAtt");
+		camLoc = glGetAttribLocation(program, "camPos");
 		viewingLoc = glGetUniformLocation(program, "viewing");
 		modelingLoc = glGetUniformLocation(program, "modeling");
 		textureLoc[0] = glGetUniformLocation(program, "texture");
-		unifLocs[0] = glGetUniformLocation(program, "spice");
+		unifLocs[0] = glGetUniformLocation(program, "specular");
 	}
 	return (program == 0);
 }
 
 void render(void) {
-	/* This part is the same as in 520mainCamera.c. */
+	/* Open program and use camera render*/
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(program);
 	camRender(&cam, viewingLoc);
-	/* This animation code is different from that in 520mainCamera.c. */
+	/* set the animation of rootNode. */
 	GLdouble rot[3][3], identity[4][4], axis[3] = {1.0, 1.0, 1.0};
 	vecUnit(3, axis, axis);
 	alpha += 0.01;
 	mat33AngleAxisRotation(alpha, axis, rot);
 	sceneSetRotation(&rootNode, rot);
-	sceneSetOneUniform(&rootNode, 0, 0.5 + 0.5 * sin(alpha * 7.0));
+	// sceneSetOneUniform(&rootNode, 0, 0.5 + 0.5 * sin(alpha * 7.0));
 	/* This rendering code is different from that in 520mainCamera.c. */
 	mat44Identity(identity);
-	GLuint unifDims[1] = {1};
+	GLuint unifDims[2] = {1,1};
 	GLuint attrDims[3] = {3, 2, 3};
+	// set the lighting and call lightrender.
+	lightSetTranslation(&light, lightTranslation);
+	lightSetAttenuation(&light, lightAtten);
+	lightSetColor(&light, lightColor);
+	lightRender(&light,lightLocs[0], lightLocs[1], lightLocs[2]);
+	// calculate the cameraPos and pass it to Campos
+	GLdouble CameraX = cam.distance * sin(cam.phi) * cos(cam.theta);
+    GLdouble CameraY = cam.distance * cos(cam.phi) * sin(cam.theta);
+    GLdouble CameraZ = cam.distance * cos(cam.phi);
+    GLdouble cameraPos[3] = {CameraX, CameraY, CameraZ};
+    GLfloat vec[3];
+    vecOpenGL(3, cameraPos, vec);
+    //printVector(3, cameraPos);
+	glUniform3f(camLoc, vec[0], vec[1], vec[2]);
 	sceneRender(&rootNode, identity, modelingLoc, 1, unifDims, unifLocs, 3, 
 		attrDims, attrLocs, textureLoc);
 }
