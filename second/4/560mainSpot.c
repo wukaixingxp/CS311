@@ -197,7 +197,8 @@ GLchar fragmentCode[] = "\
         vec3 diffLight = diffInt * lightCol * surfCol;\
         float shininess = 64.0;\
         vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
-        gl_FragColor = vec4(cosAngle,0.0, 0.0,1.0);\
+        if (cos <= cosAngle)\
+        	gl_FragColor = vec4(diffLight + specLight, 1.0);
     }";
             // if (cos <= cosAngle)\
             // gl_FragColor = vec4(ambInt, ambInt, ambInt, 1.0);\
@@ -208,12 +209,13 @@ GLchar fragmentCode[] = "\
 		attrLocs[0] = glGetAttribLocation(program, "position");
 		attrLocs[1] = glGetAttribLocation(program, "texCoords");
 		attrLocs[2] = glGetAttribLocation(program, "normal");
-		lightLocs[0] = glGetAttribLocation(program, "lightPos");
-		lightLocs[1] = glGetAttribLocation(program, "lightCol");
-		lightLocs[2] = glGetAttribLocation(program, "lightAtt");
-		lightLocs[4] = glGetAttribLocation(program, "cosAngle");
-		lightLocs[3] = glGetAttribLocation(program, "dir");
-		camLoc = glGetAttribLocation(program, "camPos");
+		lightLocs[0] = glGetUniformLocation(program, "lightPos");
+		lightLocs[1] = glGetUniformLocation(program, "lightCol");
+		lightLocs[2] = glGetUniformLocation(program, "lightAtt");
+		lightLocs[4] = glGetUniformLocation(program, "cosAngle");
+		printf("%d %d \n", lightLocs[4], attrLocs[0]);
+		lightLocs[3] = glGetUniformLocation(program, "dir");
+		camLoc = glGetUniformLocation(program, "camPos");
 		viewingLoc = glGetUniformLocation(program, "viewing");
 		modelingLoc = glGetUniformLocation(program, "modeling");
 		textureLoc[0] = glGetUniformLocation(program, "texture");
@@ -244,6 +246,7 @@ void render(void) {
 	lightSetColor(&light, lightColor);
 	lightSetType(&light, lightSPOT);
 	lightSetSpotAngle(&light, lightAngle);
+
 	lightRender(&light,lightLocs[0], lightLocs[1], lightLocs[2], lightLocs[3], lightLocs[4]);
 	// calculate the cameraPos and pass it to Campos
 	GLdouble CameraX = cam.distance * sin(cam.phi) * cos(cam.theta);

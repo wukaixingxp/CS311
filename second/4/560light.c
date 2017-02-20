@@ -77,7 +77,7 @@ void lightRender(lightLight *light, GLint positionLoc, GLint colorLoc,
 	glUniform3f(colorLoc,vec[0], vec[1], vec[2]);
 	if (light->lightType == lightOMNI || light->lightType == lightSPOT) {
 		vecOpenGL(3, light->translation, vec);
-		printVector(3, light->translation);
+		//printVector(3, light->translation);
 		glUniform3fv(positionLoc, 1, vec);
 		vecOpenGL(3, light->attenuation, vec);
 		glUniform3fv(attenLoc, 1, vec);
