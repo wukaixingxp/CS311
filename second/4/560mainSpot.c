@@ -38,7 +38,7 @@ texTexture *texRootList[1] = {&texRoot};
 texTexture *texSiblingList[1] = {&texSibling};
 /* create all the global attributes. */
 GLdouble alpha = 0.0;
-GLdouble lightTranslation[3] = {100, 100, 200};
+GLdouble lightTranslation[3] = {500, 500, 500};
 GLdouble lightColor[3] = {1.0, 1.0, 1.0};
 GLdouble lightAtten[3] = {1.0, 0.0, 0.0};
 GLdouble lightAngle = M_PI/6.0;
@@ -180,9 +180,9 @@ GLchar fragmentCode[] = "\
     void main() {\
         vec3 surfCol = vec3(texture2D(texture0, st));\
         vec3 norDir = normalize(normalDir);\
-        vec3 litDir = normalize(lightPos - fragPos);\
-        vec3 camDir = normalize(camPos - fragPos);\
         vec3 lightNorm = normalize(lightPos);\
+        vec3 litDir = normalize(lightNorm - fragPos);\
+        vec3 camDir = normalize(camPos - fragPos);\
         float cos = dot(litDir, lightNorm);\
         vec3 refDir = 2.0 * dot(litDir, norDir) * norDir - litDir;\
         float d = distance(lightPos, fragPos);\
@@ -198,11 +198,8 @@ GLchar fragmentCode[] = "\
         float shininess = 64.0;\
         vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
         if (cos <= cosAngle)\
-        	gl_FragColor = vec4(diffLight + specLight, 1.0);
+        	gl_FragColor = vec4(diffLight + specLight, 1.0);\
     }";
-            // if (cos <= cosAngle)\
-            // gl_FragColor = vec4(ambInt, ambInt, ambInt, 1.0);\
-	//gl_FragColor = vec4(diffLight + specLight, 1.0);
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
 		glUseProgram(program);
@@ -213,7 +210,6 @@ GLchar fragmentCode[] = "\
 		lightLocs[1] = glGetUniformLocation(program, "lightCol");
 		lightLocs[2] = glGetUniformLocation(program, "lightAtt");
 		lightLocs[4] = glGetUniformLocation(program, "cosAngle");
-		printf("%d %d \n", lightLocs[4], attrLocs[0]);
 		lightLocs[3] = glGetUniformLocation(program, "dir");
 		camLoc = glGetUniformLocation(program, "camPos");
 		viewingLoc = glGetUniformLocation(program, "viewing");
