@@ -38,10 +38,10 @@ texTexture *texRootList[1] = {&texRoot};
 texTexture *texSiblingList[1] = {&texSibling};
 /* create all the global attributes. */
 GLdouble alpha = 0.0;
-GLdouble lightTranslation[3] = {500, 500, 500};
+GLdouble lightTranslation[3] = {-200, -200, -100};
 GLdouble lightColor[3] = {1.0, 1.0, 1.0};
 GLdouble lightAtten[3] = {1.0, 0.0, 0.0};
-GLdouble lightAngle = M_PI/6.0;
+GLdouble lightAngle = M_PI/4.0;
 
 /* Allocate three meshes and three scene graph nodes. */
 meshGLMesh rootMesh, childMesh, siblingMesh;
@@ -179,26 +179,15 @@ GLchar fragmentCode[] = "\
     varying vec2 st;\
     void main() {\
         vec3 surfCol = vec3(texture2D(texture0, st));\
-        vec3 norDir = normalize(normalDir);\
         vec3 lightNorm = normalize(lightPos);\
-        vec3 litDir = normalize(lightNorm - fragPos);\
-        vec3 camDir = normalize(camPos - fragPos);\
-        float cos = dot(litDir, lightNorm);\
-        vec3 refDir = 2.0 * dot(litDir, norDir) * norDir - litDir;\
-        float d = distance(lightPos, fragPos);\
-        float a = lightAtt[0] + lightAtt[1] * d + lightAtt[2] * d * d;\
-        float diffInt = dot(norDir, litDir) / a;\
-        float specInt = dot(refDir, camDir);\
-        if (diffInt <= 0.0 || specInt <= 0.0)\
-            specInt = 0.0;\
+        vec3 spotDir = normalize(lightNorm - fragPos);\
+        float cos = dot(spotDir,lightNorm);\
         float ambInt = 0.1;\
-        if (diffInt <= ambInt)\
-            diffInt = ambInt;\
-        vec3 diffLight = diffInt * lightCol * surfCol;\
-        float shininess = 64.0;\
-        vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
-        if (cos <= cosAngle)\
-        	gl_FragColor = vec4(diffLight + specLight, 1.0);\
+        if (cos >= cosAngle){\
+            gl_FragColor = vec4(surfCol*lightCol, 1.0);\
+        }else{\
+            gl_FragColor = vec4(surfCol*lightCol*ambInt, 1.0);\
+        }\
     }";
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
