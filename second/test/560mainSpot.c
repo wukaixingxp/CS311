@@ -38,10 +38,10 @@ texTexture *texRootList[1] = {&texRoot};
 texTexture *texSiblingList[1] = {&texSibling};
 /* create all the global attributes. */
 GLdouble alpha = 0.0;
-GLdouble lightTranslation[3] = {0.1, 0.1, 0.1};
+GLdouble lightTranslation[3] = {200, 200, 100};
 GLdouble lightColor[3] = {1.0, 1.0, 1.0};
 GLdouble lightAtten[3] = {1.0, 0.0, 0.0};
-GLdouble lightAngle = M_PI/2.0;
+GLdouble lightAngle = M_PI/3.0;
 
 /* Allocate three meshes and three scene graph nodes. */
 meshGLMesh rootMesh, childMesh, siblingMesh;
@@ -165,45 +165,8 @@ GLchar vertexCode[] = "\
         normalDir = vec3(modeling * vec4(normal, 0.0));\
         st = texCoords;\
     }";
-// GLchar fragmentCode[] = "\
-//     uniform sampler2D texture0;\
-//     uniform vec3 specular;\
-//     uniform vec3 camPos;\
-//     uniform vec3 lightPos;\
-//     uniform vec3 lightCol;\
-//     uniform vec3 lightAtt;\
-//     uniform float cosAngle;\
-//     uniform vec3 dir;\
-//     varying vec3 fragPos;\
-//     varying vec3 normalDir;\
-//     varying vec2 st;\
-//     void main() {\
-//         vec3 surfCol = vec3(texture2D(texture0, st));\
-//         vec3 lightNorm = normalize(lightPos);\
-//         vec3 spotDir = normalize(lightNorm - fragPos);\
-//         float cos = dot(spotDir,lightNorm);\
-//         float ambInt = 0.1;\
-//         if (cos >= cosAngle){\
-//             gl_FragColor = vec4(surfCol*lightCol, 1.0);\
-//         }else{\
-//             gl_FragColor = vec4(surfCol*lightCol*ambInt, 1.0);\
-//         }\
-//     }";
-    GLchar fragmentCode[] = "\
-    uniform sampler2D texture0;\
-    uniform vec3 specular;\
-    uniform vec3 camPos;\
-    uniform vec3 lightPos;\
-    uniform vec3 lightCol;\
-    uniform vec3 lightAtt;\
-    uniform vec3 dir;\
-    uniform float cosAngle;\
-    varying vec3 fragPos;\
-    varying vec3 normalDir;\
-    varying vec2 st;\
-    void main() {\
-        vec3 surfCol = vec3(texture2D(texture0, st));\
-        vec3 lightNorm = normalize(lightPos);\
+GLchar fragmentCode[] = "\
+		vec3 surfCol = vec3(texture2D(texture0, st));\
         vec3 spotDir = normalize(lightPos - fragPos);\
         vec3 norDir = normalize(normalDir);\
         float cos = dot(spotDir,-dir);\
@@ -212,7 +175,7 @@ GLchar vertexCode[] = "\
         vec3 refDir = 2.0 * dot(litDir, norDir) * norDir - litDir;\
         float d = distance(lightPos, fragPos);\
         float a = lightAtt[0] + lightAtt[1] * d + lightAtt[2] * d * d;\
-        float diffInt = dot(norDir, litDir)/a;\
+        float diffInt = dot(norDir, litDir) / a;\
         float specInt = dot(refDir, camDir);\
         if (diffInt <= 0.0 || specInt <= 0.0)\
             specInt = 0.0;\
@@ -222,11 +185,7 @@ GLchar vertexCode[] = "\
         vec3 diffLight = diffInt * lightCol * surfCol;\
         float shininess = 64.0;\
         vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
-        if (cos >= cosAngle){\
-        	gl_FragColor = vec4(diffLight+specLight,1.0);\
-        }else{\
-            gl_FragColor = vec4(diffLight+specLight,1.0) * ambInt;\
-        }\
+        gl_FragColor = vec4(diffLight + specLight ,1.0);\
     }";
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
@@ -256,7 +215,7 @@ void render(void) {
 	/* set the animation of rootNode. */
 	GLdouble rot[3][3], identity[4][4], axis[3] = {1.0, 1.0, 1.0};
 	vecUnit(3, axis, axis);
-	//alpha += 0.01;
+	alpha += 0.01;
 	mat33AngleAxisRotation(alpha, axis, rot);
 	sceneSetRotation(&rootNode, rot);
 	// sceneSetOneUniform(&rootNode, 0, 0.5 + 0.5 * sin(alpha * 7.0));

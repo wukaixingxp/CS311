@@ -80,82 +80,58 @@ void meshDestroy(meshMesh *mesh) {
 except through accessor functions. */
 typedef struct meshGLMesh meshGLMesh;
 struct meshGLMesh {
-	GLuint triNum, vertNum, attrNum,vaoNum;
-	GLuint *attrDim;
+	GLuint triNum, vertNum, attrDim;
 	GLuint buffers[2];
-	GLuint vaos
 };
 
-/* Initializes an OpenGL mesh from a non-OpenGL mesh. vaoNum is the number of 
-vertex array objects attached to this mesh storage. Typically vaoNum equals the 
-number of distinct shader programs that will need to draw the mesh. Returns 0 
-on success, non-zero on failure. */
-int meshGLInitialize(meshGLMesh *meshGL, meshMesh *mesh, GLuint attrNum, 
-        GLuint attrDims[], GLuint vaoNum) {
-    meshGL->attrDims = (GLuint *)malloc((attrNum + vaoNum) * sizeof(GLuint));
-    if (meshGL->attrDims == NULL)
-        return 1;
-    for (int i = 0; i < attrNum; i += 1)
-        meshGL->attrDims[i] = attrDims[i];
-    meshGL->vaos = &meshGL->attrDims[attrNum];
-    glGenVertexArrays(vaoNum, meshGL->vaos);
-    meshGL->vaoNum = vaoNum;
-    meshGL->attrNum = attrNum;
-    meshGL->triNum = mesh->triNum;
-    meshGL->vertNum = mesh->vertNum;
-    meshGL->attrDim = mesh->attrDim;
-    glGenBuffers(2, meshGL->buffers);
-    for (int i =0; i < vaoNum; i++){
-    	meshGLVAOInitialize(&meshGL, i, attrLocs)
-    }
-    return 0;
+/* Initializes an OpenGL mesh from a non-OpenGL mesh. */
+void meshGLInitialize(meshGLMesh *meshGL, meshMesh *mesh) {
+	GLuint buffers[2];
+	glGenBuffers(2, buffers);
+	glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+	glBufferData(GL_ARRAY_BUFFER, mesh->vertNum * mesh->attrDim * sizeof(GLdouble),
+		(GLvoid *)mesh->vert, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->triNum * 3 * sizeof(GLuint),
+		(GLvoid *)mesh->tri, GL_STATIC_DRAW);
+	meshGL->buffers[0] = buffers[0];
+	meshGL->buffers[1] = buffers[1];
+	meshGL->triNum = (GLuint)mesh->triNum;
+	meshGL->vertNum = (GLuint)mesh->vertNum;
+	meshGL->attrDim = (GLuint)mesh->attrDim;
+
 }
 
 #define BUFFER_OFFSET(bytes) ((GLubyte*) NULL + (bytes))
-/* attrLocs is meshGL->attrNum locations in the active shader program. index is 
-an integer between 0 and meshGL->voaNum - 1, inclusive. This function 
-initializes the VAO at that index in the meshGL's array of VAOs, so that the 
-VAO can render using those locations. */
-void meshGLVAOInitialize(meshGLMesh *meshGL, GLuint index, GLint attrLocs[]){
-	GLint vao;
-	glBindVertexArray(meshGL->vaos[index]);
-	/* Tell the VAO about the attribute arrays and how they should hook into 
-	the vertex shader. These OpenGL calls used to happen at rendering time. Now 
-	they happen at initialization time, and the VAO remembers them. Magic. */
-	glBindBuffer(GL_ARRAY_BUFFER, meshGL->buffers[0]);
-	int offset = 0;
-	for (int i = 0; i < meshGL->attrNum; i++){
-		glEnableVertexAttribArray(attrLocs[i]);
-	} 
-	for (int i = 0; i < meshGL->attrNum; i++){
-		glVertexAttribPointer(attrLocs[i], attrDims[i], GL_DOUBLE, GL_FALSE, 
-		meshGL->attrDim[i] * sizeof(GLdouble), BUFFER_OFFSET(offset * sizeof(GLdouble)));
-		offset += attrDims[i];
-	}
-	/* Also tell the VAO about the array of triangle indices (but don't 
-	actually draw the triangles now). */
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshGL->buffers[1]);
-	/* When you're done issuing commands to a VAO, always unbind it by binding 
-	the trivial VAO. (Failure to do this recently cost me several hours of 
-	debugging.) */
-	glBindVertexArray(0);
-	meshGL->vaos[i] = 
-}
+
 /* Renders the already-initialized OpenGL mesh. attrDims is an array of length 
 attrNum. For each i, its ith entry is the dimension of the ith attribute 
 vector. Similarly, attrLocs is an array of length attrNum, giving the location 
 of the ith attribute in the active OpenGL shader program. */
-void meshGLRender(meshGLMesh *meshGL, GLuint index) {
-	glBindVertexArray(meshGL->vaos[i]);
+void meshGLRender(meshGLMesh *meshGL, GLuint attrNum, GLuint attrDims[], 
+		GLint attrLocs[]) {
+	glBindBuffer(GL_ARRAY_BUFFER, meshGL->buffers[0]);
+	int offset = 0;
+	for (int i = 0; i < attrNum; i++){
+		glEnableVertexAttribArray(attrLocs[i]);
+	} 
+	for (int i = 0; i < attrNum; i++){
+		glVertexAttribPointer(attrLocs[i], attrDims[i], GL_DOUBLE, GL_FALSE, 
+		meshGL->attrDim * sizeof(GLdouble), BUFFER_OFFSET(offset * sizeof(GLdouble)));
+		offset += attrDims[i];
+	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshGL->buffers[1]);
+	/* Draw the triangles, exactly as in the preceding tutorial. */
 	glDrawElements(GL_TRIANGLES, meshGL->triNum * 3, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
-	glBindVertexArray(0);
+	/* Disable the attributes when finished with them. */
+	for (int i = 0; i < attrNum; i++){
+		glDisableVertexAttribArray(attrLocs[i]);
+	}
 }
 
 /* Deallocates the resources backing the initialized OpenGL mesh. */
 void meshGLDestroy(meshGLMesh *meshGL) {
     glDeleteBuffers(2, meshGL->buffers);
-    glDeleteVertexArrays(1, meshGL->vaos);
-    free(meshGL->attrDims);
 }
 
 

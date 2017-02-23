@@ -2,7 +2,7 @@
 
 
 /* On macOS, compile with...
-    clang 560mainSpot.c -lglfw -framework OpenGL
+    clang 550mainLighting.c -lglfw -framework OpenGL
 */
 
 #include <stdio.h>
@@ -18,14 +18,14 @@
 #include "520camera.c"
 #include "540texture.c"
 #include "540scene.c"
-#include "560light.c"
+#include "550light.c"
 /* create all the locations and programs. */
 GLuint program;
 GLint attrLocs[3];
 GLint viewingLoc, modelingLoc;
 GLint unifLocs[1];
 GLint textureLoc[1];
-GLint lightLocs[5];
+GLint lightLocs[3];
 GLint camLoc;
 /* create all the structs.*/
 camCamera cam;
@@ -38,11 +38,9 @@ texTexture *texRootList[1] = {&texRoot};
 texTexture *texSiblingList[1] = {&texSibling};
 /* create all the global attributes. */
 GLdouble alpha = 0.0;
-GLdouble lightTranslation[3] = {0.1, 0.1, 0.1};
+GLdouble lightTranslation[3] = {100, 100, 200};
 GLdouble lightColor[3] = {1.0, 1.0, 1.0};
 GLdouble lightAtten[3] = {1.0, 0.0, 0.0};
-GLdouble lightAngle = M_PI/2.0;
-
 /* Allocate three meshes and three scene graph nodes. */
 meshGLMesh rootMesh, childMesh, siblingMesh;
 sceneNode rootNode, childNode, siblingNode;
@@ -165,54 +163,25 @@ GLchar vertexCode[] = "\
         normalDir = vec3(modeling * vec4(normal, 0.0));\
         st = texCoords;\
     }";
-// GLchar fragmentCode[] = "\
-//     uniform sampler2D texture0;\
-//     uniform vec3 specular;\
-//     uniform vec3 camPos;\
-//     uniform vec3 lightPos;\
-//     uniform vec3 lightCol;\
-//     uniform vec3 lightAtt;\
-//     uniform float cosAngle;\
-//     uniform vec3 dir;\
-//     varying vec3 fragPos;\
-//     varying vec3 normalDir;\
-//     varying vec2 st;\
-//     void main() {\
-//         vec3 surfCol = vec3(texture2D(texture0, st));\
-//         vec3 lightNorm = normalize(lightPos);\
-//         vec3 spotDir = normalize(lightNorm - fragPos);\
-//         float cos = dot(spotDir,lightNorm);\
-//         float ambInt = 0.1;\
-//         if (cos >= cosAngle){\
-//             gl_FragColor = vec4(surfCol*lightCol, 1.0);\
-//         }else{\
-//             gl_FragColor = vec4(surfCol*lightCol*ambInt, 1.0);\
-//         }\
-//     }";
-    GLchar fragmentCode[] = "\
+GLchar fragmentCode[] = "\
     uniform sampler2D texture0;\
     uniform vec3 specular;\
     uniform vec3 camPos;\
     uniform vec3 lightPos;\
     uniform vec3 lightCol;\
     uniform vec3 lightAtt;\
-    uniform vec3 dir;\
-    uniform float cosAngle;\
     varying vec3 fragPos;\
     varying vec3 normalDir;\
     varying vec2 st;\
     void main() {\
         vec3 surfCol = vec3(texture2D(texture0, st));\
-        vec3 lightNorm = normalize(lightPos);\
-        vec3 spotDir = normalize(lightPos - fragPos);\
         vec3 norDir = normalize(normalDir);\
-        float cos = dot(spotDir,-dir);\
         vec3 litDir = normalize(lightPos - fragPos);\
         vec3 camDir = normalize(camPos - fragPos);\
         vec3 refDir = 2.0 * dot(litDir, norDir) * norDir - litDir;\
         float d = distance(lightPos, fragPos);\
         float a = lightAtt[0] + lightAtt[1] * d + lightAtt[2] * d * d;\
-        float diffInt = dot(norDir, litDir)/a;\
+        float diffInt = dot(norDir, litDir) / a;\
         float specInt = dot(refDir, camDir);\
         if (diffInt <= 0.0 || specInt <= 0.0)\
             specInt = 0.0;\
@@ -222,11 +191,7 @@ GLchar vertexCode[] = "\
         vec3 diffLight = diffInt * lightCol * surfCol;\
         float shininess = 64.0;\
         vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
-        if (cos >= cosAngle){\
-        	gl_FragColor = vec4(diffLight+specLight,1.0);\
-        }else{\
-            gl_FragColor = vec4(diffLight+specLight,1.0) * ambInt;\
-        }\
+        gl_FragColor = vec4(diffLight + specLight ,1.0);\
     }";
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
@@ -237,8 +202,6 @@ GLchar vertexCode[] = "\
 		lightLocs[0] = glGetUniformLocation(program, "lightPos");
 		lightLocs[1] = glGetUniformLocation(program, "lightCol");
 		lightLocs[2] = glGetUniformLocation(program, "lightAtt");
-		lightLocs[4] = glGetUniformLocation(program, "cosAngle");
-		lightLocs[3] = glGetUniformLocation(program, "dir");
 		camLoc = glGetUniformLocation(program, "camPos");
 		viewingLoc = glGetUniformLocation(program, "viewing");
 		modelingLoc = glGetUniformLocation(program, "modeling");
@@ -256,7 +219,7 @@ void render(void) {
 	/* set the animation of rootNode. */
 	GLdouble rot[3][3], identity[4][4], axis[3] = {1.0, 1.0, 1.0};
 	vecUnit(3, axis, axis);
-	//alpha += 0.01;
+	alpha += 0.01;
 	mat33AngleAxisRotation(alpha, axis, rot);
 	sceneSetRotation(&rootNode, rot);
 	// sceneSetOneUniform(&rootNode, 0, 0.5 + 0.5 * sin(alpha * 7.0));
@@ -265,13 +228,10 @@ void render(void) {
 	GLuint unifDims[2] = {1,1};
 	GLuint attrDims[3] = {3, 2, 3};
 	// set the lighting and call lightrender.
-	lightShineFrom(&light, lightTranslation, M_PI/3.0, M_PI/3.0);
+	lightSetTranslation(&light, lightTranslation);
 	lightSetAttenuation(&light, lightAtten);
 	lightSetColor(&light, lightColor);
-	lightSetType(&light, lightSPOT);
-	lightSetSpotAngle(&light, lightAngle);
-
-	lightRender(&light,lightLocs[0], lightLocs[1], lightLocs[2], lightLocs[3], lightLocs[4]);
+	lightRender(&light,lightLocs[0], lightLocs[1], lightLocs[2]);
 	// calculate the cameraPos and pass it to Campos
 	GLdouble CameraX = cam.distance * sin(cam.phi) * cos(cam.theta);
     GLdouble CameraY = cam.distance * cos(cam.phi) * sin(cam.theta);
