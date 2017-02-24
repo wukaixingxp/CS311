@@ -111,16 +111,16 @@ int initializeScene(void) {
 	if (texInitializeFile(&texH, "grass.jpg", GL_LINEAR, GL_LINEAR, 
     		GL_REPEAT, GL_REPEAT) != 0)
     	return 1;
-    if (texInitializeFile(&texV, "granite.jpg", GL_LINEAR, GL_LINEAR, 
+    if (texInitializeFile(&texV, "hill.jpg", GL_LINEAR, GL_LINEAR, 
     		GL_REPEAT, GL_REPEAT) != 0)
     	return 2;
     if (texInitializeFile(&texW, "water.jpg", GL_LINEAR, GL_LINEAR, 
     		GL_REPEAT, GL_REPEAT) != 0)
     	return 3;
-    if (texInitializeFile(&texT, "trunk.png", GL_LINEAR, GL_LINEAR, 
+    if (texInitializeFile(&texT, "tree.png", GL_LINEAR, GL_LINEAR, 
     		GL_REPEAT, GL_REPEAT) != 0)
     	return 4;
-    if (texInitializeFile(&texL, "tree.jpg", GL_LINEAR, GL_LINEAR, 
+    if (texInitializeFile(&texL, "leaf.jpg", GL_LINEAR, GL_LINEAR, 
     		GL_REPEAT, GL_REPEAT) != 0)
     	return 5;
 	GLuint attrDims[3] = {3, 2, 3};
