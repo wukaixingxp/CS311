@@ -36,18 +36,22 @@ sceneNode nodeH, nodeV, nodeW, nodeT, nodeL;
 /* We need just one shadow program, because all of our meshes have the same 
 attribute structure. */
 shadowProgram sdwProg;
+shadowProgram sdwPink;
 /* We need one shadow map per shadow-casting light. */
 lightLight light;
 shadowMap sdwMap;
+lightLight pinkLight;
+shadowMap pinkMap;
 /* The main shader program has extra hooks for shadowing. */
 GLuint program;
 GLint viewingLoc, modelingLoc;
 GLint unifLocs[1], textureLocs[1];
 GLint attrLocs[3];
 GLint lightPosLoc, lightColLoc, lightAttLoc, lightDirLoc, lightCosLoc;
+GLint pinkPosLoc, pinkColLoc, pinkAttLoc, pinkDirLoc, pinkCosLoc;
 GLint camPosLoc;
 GLint viewingSdwLoc, textureSdwLoc;
-
+GLint viewingPinkLoc, texturePinkLoc;
 void handleError(int error, const char *description) {
 	fprintf(stderr, "handleError: %d\n%s\n", error, description);
 }
@@ -156,9 +160,10 @@ int initializeScene(void) {
 	if (meshInitializeDissectedLandscape(&mesh, &meshLand, M_PI / 3.0, 1) != 0)
 		return 7;
 	/* There are now two VAOs per mesh. */
-	meshGLInitialize(&meshH, &mesh, 3, attrDims, 2);
+	meshGLInitialize(&meshH, &mesh, 3, attrDims, 3);
 	meshGLVAOInitialize(&meshH, 0, attrLocs);
 	meshGLVAOInitialize(&meshH, 1, sdwProg.attrLocs);
+	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeDissectedLandscape(&mesh, &meshLand, M_PI / 3.0, 0) != 0)
 		return 8;
@@ -171,27 +176,31 @@ int initializeScene(void) {
 		vert[3] = (vert[0] * normal[0] + vert[1] * normal[1]) / 20.0;
 		vert[4] = vert[2] / 20.0;
 	}
-	meshGLInitialize(&meshV, &mesh, 3, attrDims, 2);
+	meshGLInitialize(&meshV, &mesh, 3, attrDims, 3);
 	meshGLVAOInitialize(&meshV, 0, attrLocs);
 	meshGLVAOInitialize(&meshV, 1, sdwProg.attrLocs);
+	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeLandscape(&mesh, 12, 12, 5.0, (double *)ws) != 0)
 		return 9;
-	meshGLInitialize(&meshW, &mesh, 3, attrDims, 2);
+	meshGLInitialize(&meshW, &mesh, 3, attrDims, 3);
 	meshGLVAOInitialize(&meshW, 0, attrLocs);
 	meshGLVAOInitialize(&meshW, 1, sdwProg.attrLocs);
+	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeCapsule(&mesh, 1.0, 10.0, 1, 8) != 0)
 		return 10;
-	meshGLInitialize(&meshT, &mesh, 3, attrDims, 2);
+	meshGLInitialize(&meshT, &mesh, 3, attrDims, 3);
 	meshGLVAOInitialize(&meshT, 0, attrLocs);
 	meshGLVAOInitialize(&meshT, 1, sdwProg.attrLocs);
+	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeSphere(&mesh, 5.0, 8, 16) != 0)
 		return 11;
-	meshGLInitialize(&meshL, &mesh, 3, attrDims, 2);
+	meshGLInitialize(&meshL, &mesh, 3, attrDims, 3);
 	meshGLVAOInitialize(&meshL, 0, attrLocs);
 	meshGLVAOInitialize(&meshL, 1, sdwProg.attrLocs);
+	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (sceneInitialize(&nodeW, 3, 1, &meshW, NULL, NULL) != 0)
 		return 14;
@@ -258,10 +267,24 @@ int initializeCameraLight(void) {
 	vecSet(3, vec, 1.0, 0.0, 0.0);
 	lightSetAttenuation(&light, vec);
 	lightSetSpotAngle(&light, M_PI / 3.0);
+// set the pink light
+	lightSetType(&pinkLight, lightSPOT);
+	vecSet(3, vec, 40.0, 50.0, 30.0);
+	lightShineFrom(&pinkLight, vec, M_PI * 3.0 / 4.0, M_PI * 3.0 / 4.0);
+	vecSet(3, vec, 1.0, 0.0, 1.0);
+	lightSetColor(&pinkLight, vec);
+	vecSet(3, vec, 1.0, 0.0, 0.0);
+	lightSetAttenuation(&pinkLight, vec);
+	lightSetSpotAngle(&pinkLight, M_PI / 3.0);
 	/* Configure shadow mapping. */
 	if (shadowProgramInitialize(&sdwProg, 3) != 0)
 		return 1;
 	if (shadowMapInitialize(&sdwMap, 1024, 1024) != 0)
+		return 2;
+	// set the pink shadow mapping
+	if (shadowProgramInitialize(&sdwPink, 3) != 0)
+		return 1;
+	if (shadowMapInitialize(&pinkMap, 1024, 1024) != 0)
 		return 2;
 	return 0;
 }
@@ -273,6 +296,7 @@ int initializeShaderProgram(void) {
 		uniform mat4 viewing;\
 		uniform mat4 modeling;\
 		uniform mat4 viewingSdw;\
+		uniform mat4 viewingPink;\
 		in vec3 position;\
 		in vec2 texCoords;\
 		in vec3 normal;\
@@ -280,6 +304,7 @@ int initializeShaderProgram(void) {
 		out vec3 normalDir;\
 		out vec2 st;\
 		out vec4 fragSdw;\
+		out vec4 fragPink;\
 		void main(void) {\
 			mat4 scaleBias = mat4(\
 				0.5, 0.0, 0.0, 0.0, \
@@ -289,6 +314,7 @@ int initializeShaderProgram(void) {
 			vec4 worldPos = modeling * vec4(position, 1.0);\
 			gl_Position = viewing * worldPos;\
 			fragSdw = scaleBias * viewingSdw * worldPos;\
+			fragPink = scaleBias * viewingPink * worldPos;\
 			fragPos = vec3(worldPos);\
 			normalDir = vec3(modeling * vec4(normal, 0.0));\
 			st = texCoords;\
@@ -304,10 +330,12 @@ int initializeShaderProgram(void) {
 		uniform vec3 lightAim;\
 		uniform float lightCos;\
 		uniform sampler2DShadow textureSdw;\
+		uniform sampler2DShadow texturePink;\
 		in vec3 fragPos;\
 		in vec3 normalDir;\
 		in vec2 st;\
 		in vec4 fragSdw;\
+		in vec4 fragPink;\
 		out vec4 fragColor;\
 		void main(void) {\
 			vec3 diffuse = vec3(texture(texture0, st));\
@@ -318,6 +346,7 @@ int initializeShaderProgram(void) {
 			else\
 				diffInt = 1.0;\
 			float sdw = textureProj(textureSdw, fragSdw);\
+			float pink = textureProj(texturePink, fragPink);\
 			diffInt *= sdw;\
 			specInt *= sdw;\
 			vec3 diffRefl = max(0.2, diffInt) * lightCol * diffuse;\
@@ -342,6 +371,8 @@ int initializeShaderProgram(void) {
 		lightCosLoc = glGetUniformLocation(program, "lightCos");
 		viewingSdwLoc = glGetUniformLocation(program, "viewingSdw");
 		textureSdwLoc = glGetUniformLocation(program, "textureSdw");
+		texturePinkLoc = glGetUniformLocation(program, "texturePink");
+		viewingPinkLoc = glGetUniformLocation(program, "viewingPink");
 	}
 	return (program == 0);
 }
@@ -358,6 +389,10 @@ void render(void) {
 	shadowMapRender(&sdwMap, &sdwProg, &light, -100.0, -1.0);
 	sceneRender(&nodeH, identity, sdwProg.modelingLoc, 0, NULL, NULL, 1, 
 		sdwTextureLocs);
+
+	shadowMapRender(&pinkMap, &sdwPink, &pinkLight, -100.0, -1.0);
+	sceneRender(&nodeH, identity, sdwPink.modelingLoc, 0, NULL, NULL, 1, 
+		sdwTextureLocs);
 	/* Finish preparing the shadow maps, restore the viewport, and begin to 
 	render the scene. */
 	shadowMapUnrender();
@@ -373,6 +408,7 @@ void render(void) {
 	lightRender(&light, lightPosLoc, lightColLoc, lightAttLoc, lightDirLoc, 
 		lightCosLoc);
 	shadowRender(&sdwMap, viewingSdwLoc, GL_TEXTURE7, 7, textureSdwLoc);
+	shadowRender(&pinkMap, viewingSdwLoc, GL_TEXTURE7, 7, texturePinkLoc);
 	GLuint unifDims[1] = {3};
 	sceneRender(&nodeH, identity, modelingLoc, 1, unifDims, unifLocs, 0, 
 		textureLocs);
@@ -433,7 +469,9 @@ int main(void) {
     }
     /* Deallocate more resources than ever. */
     shadowProgramDestroy(&sdwProg);
+    shadowProgramDestroy(&sdwPink);
     shadowMapDestroy(&sdwMap);
+    shadowMapDestroy(&pinkMap);
     glDeleteProgram(program);
     destroyScene();
 	glfwDestroyWindow(window);
