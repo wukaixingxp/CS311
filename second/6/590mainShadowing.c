@@ -36,7 +36,6 @@ sceneNode nodeH, nodeV, nodeW, nodeT, nodeL;
 /* We need just one shadow program, because all of our meshes have the same 
 attribute structure. */
 shadowProgram sdwProg;
-shadowProgram sdwPink;
 /* We need one shadow map per shadow-casting light. */
 lightLight light;
 shadowMap sdwMap;
@@ -160,10 +159,9 @@ int initializeScene(void) {
 	if (meshInitializeDissectedLandscape(&mesh, &meshLand, M_PI / 3.0, 1) != 0)
 		return 7;
 	/* There are now two VAOs per mesh. */
-	meshGLInitialize(&meshH, &mesh, 3, attrDims, 3);
+	meshGLInitialize(&meshH, &mesh, 3, attrDims, 2);
 	meshGLVAOInitialize(&meshH, 0, attrLocs);
 	meshGLVAOInitialize(&meshH, 1, sdwProg.attrLocs);
-	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeDissectedLandscape(&mesh, &meshLand, M_PI / 3.0, 0) != 0)
 		return 8;
@@ -176,31 +174,27 @@ int initializeScene(void) {
 		vert[3] = (vert[0] * normal[0] + vert[1] * normal[1]) / 20.0;
 		vert[4] = vert[2] / 20.0;
 	}
-	meshGLInitialize(&meshV, &mesh, 3, attrDims, 3);
+	meshGLInitialize(&meshV, &mesh, 3, attrDims, 2);
 	meshGLVAOInitialize(&meshV, 0, attrLocs);
 	meshGLVAOInitialize(&meshV, 1, sdwProg.attrLocs);
-	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeLandscape(&mesh, 12, 12, 5.0, (double *)ws) != 0)
 		return 9;
-	meshGLInitialize(&meshW, &mesh, 3, attrDims, 3);
+	meshGLInitialize(&meshW, &mesh, 3, attrDims, 2);
 	meshGLVAOInitialize(&meshW, 0, attrLocs);
 	meshGLVAOInitialize(&meshW, 1, sdwProg.attrLocs);
-	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeCapsule(&mesh, 1.0, 10.0, 1, 8) != 0)
 		return 10;
-	meshGLInitialize(&meshT, &mesh, 3, attrDims, 3);
+	meshGLInitialize(&meshT, &mesh, 3, attrDims, 2);
 	meshGLVAOInitialize(&meshT, 0, attrLocs);
 	meshGLVAOInitialize(&meshT, 1, sdwProg.attrLocs);
-	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (meshInitializeSphere(&mesh, 5.0, 8, 16) != 0)
 		return 11;
-	meshGLInitialize(&meshL, &mesh, 3, attrDims, 3);
+	meshGLInitialize(&meshL, &mesh, 3, attrDims, 2);
 	meshGLVAOInitialize(&meshL, 0, attrLocs);
 	meshGLVAOInitialize(&meshL, 1, sdwProg.attrLocs);
-	meshGLVAOInitialize(&meshH, 2, sdwPink.attrLocs);
 	meshDestroy(&mesh);
 	if (sceneInitialize(&nodeW, 3, 1, &meshW, NULL, NULL) != 0)
 		return 14;
@@ -269,7 +263,7 @@ int initializeCameraLight(void) {
 	lightSetSpotAngle(&light, M_PI / 3.0);
 // set the pink light
 	lightSetType(&pinkLight, lightSPOT);
-	vecSet(3, vec, 40.0, 50.0, 30.0);
+	vecSet(3, vec, 45.0, 25.0, 25.0);
 	lightShineFrom(&pinkLight, vec, M_PI * 3.0 / 4.0, M_PI * 3.0 / 4.0);
 	vecSet(3, vec, 1.0, 0.0, 1.0);
 	lightSetColor(&pinkLight, vec);
@@ -282,8 +276,6 @@ int initializeCameraLight(void) {
 	if (shadowMapInitialize(&sdwMap, 1024, 1024) != 0)
 		return 2;
 	// set the pink shadow mapping
-	if (shadowProgramInitialize(&sdwPink, 3) != 0)
-		return 1;
 	if (shadowMapInitialize(&pinkMap, 1024, 1024) != 0)
 		return 2;
 	return 0;
@@ -314,7 +306,7 @@ int initializeShaderProgram(void) {
 			vec4 worldPos = modeling * vec4(position, 1.0);\
 			gl_Position = viewing * worldPos;\
 			fragSdw = scaleBias * viewingSdw * worldPos;\
-			fragPink = scaleBias * viewingPink * worldPos;\
+			fragPink= scaleBias * viewingPink * worldPos;\
 			fragPos = vec3(worldPos);\
 			normalDir = vec3(modeling * vec4(normal, 0.0));\
 			st = texCoords;\
@@ -329,6 +321,11 @@ int initializeShaderProgram(void) {
 		uniform vec3 lightAtt;\
 		uniform vec3 lightAim;\
 		uniform float lightCos;\
+		uniform vec3 pinkPos;\
+		uniform vec3 pinkCol;\
+		uniform vec3 pinkAtt;\
+		uniform vec3 pinkAim;\
+		uniform float pinkCos;\
 		uniform sampler2DShadow textureSdw;\
 		uniform sampler2DShadow texturePink;\
 		in vec3 fragPos;\
@@ -338,20 +335,46 @@ int initializeShaderProgram(void) {
 		in vec4 fragPink;\
 		out vec4 fragColor;\
 		void main(void) {\
-			vec3 diffuse = vec3(texture(texture0, st));\
+			vec3 surfCol = vec3(texture(texture0, st));\
 			vec3 litDir = normalize(lightPos - fragPos);\
-			float diffInt, specInt = 0.0;\
-			if (dot(lightAim, -litDir) < lightCos)\
+			vec3 camDir = normalize(camPos - fragPos);\
+			vec3 norDir = normalize(normalDir);\
+			vec3 refDir = 2.0 * dot(litDir, norDir) * norDir - litDir;\
+        	float d = distance(lightPos, fragPos);\
+        	float a = lightAtt[0] + lightAtt[1] * d + lightAtt[2] * d * d;\
+        	float diffInt = dot(norDir, litDir)/a;\
+        	float specInt = dot(refDir, camDir);\
+			if (dot(lightAim, -litDir) < lightCos){\
 				diffInt = 0.0;\
+				specInt = 0.0;\
+			}\
 			else\
 				diffInt = 1.0;\
 			float sdw = textureProj(textureSdw, fragSdw);\
-			float pink = textureProj(texturePink, fragPink);\
 			diffInt *= sdw;\
 			specInt *= sdw;\
-			vec3 diffRefl = max(0.2, diffInt) * lightCol * diffuse;\
-			vec3 specRefl = specInt * lightCol * specular;\
-			fragColor = vec4(diffRefl + specRefl, 1.0);\
+			float shininess = 64.0;\
+			vec3 diffLight = max(0.2, diffInt) * lightCol * surfCol;\
+			vec3 specLight= pow(specInt / a, shininess) * lightCol * specular;\
+			\
+			vec3 pinkDir = normalize(pinkPos - fragPos);\
+			vec3 pinkrefDir = 2.0 * dot(pinkDir, norDir) * norDir - pinkDir;\
+        	float e = distance(pinkPos, fragPos);\
+        	float f = lightAtt[0] + lightAtt[1] * e + lightAtt[2] * e * e;\
+        	float pinkDiffInt = dot(norDir, pinkDir)/f;\
+        	float pinkSpecInt = dot(pinkrefDir, camDir);\
+			if (dot(pinkAim, -pinkDir) < pinkCos){\
+				pinkDiffInt = 0.0;\
+				pinkSpecInt = 0.0;\
+			}\
+			else\
+				pinkDiffInt = 1.0;\
+			float pink = textureProj(texturePink, fragPink);\
+			pinkDiffInt *= pink;\
+			pinkSpecInt *= pink;\
+			vec3 pinkDiffLight = max(0.2, pinkDiffInt) * pinkCol * surfCol;\
+			vec3 pinkSpecLight= pow(pinkSpecInt / f, shininess) * pinkCol * specular;\
+			fragColor = vec4(pinkDiffLight + pinkSpecLight + diffLight + specLight, 1.0);\
 		}";
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
@@ -373,6 +396,11 @@ int initializeShaderProgram(void) {
 		textureSdwLoc = glGetUniformLocation(program, "textureSdw");
 		texturePinkLoc = glGetUniformLocation(program, "texturePink");
 		viewingPinkLoc = glGetUniformLocation(program, "viewingPink");
+		pinkPosLoc = glGetUniformLocation(program, "pinkPos");
+		pinkColLoc = glGetUniformLocation(program, "pinkCol");
+		pinkAttLoc = glGetUniformLocation(program, "pinkAtt");
+		pinkDirLoc = glGetUniformLocation(program, "pinkAim");
+		pinkCosLoc = glGetUniformLocation(program, "pinkCos");
 	}
 	return (program == 0);
 }
@@ -389,9 +417,8 @@ void render(void) {
 	shadowMapRender(&sdwMap, &sdwProg, &light, -100.0, -1.0);
 	sceneRender(&nodeH, identity, sdwProg.modelingLoc, 0, NULL, NULL, 1, 
 		sdwTextureLocs);
-
-	shadowMapRender(&pinkMap, &sdwPink, &pinkLight, -100.0, -1.0);
-	sceneRender(&nodeH, identity, sdwPink.modelingLoc, 0, NULL, NULL, 1, 
+	shadowMapRender(&pinkMap, &sdwProg, &pinkLight, -100.0, -1.0);
+	sceneRender(&nodeH, identity, sdwProg.modelingLoc, 0, NULL, NULL, 1, 
 		sdwTextureLocs);
 	/* Finish preparing the shadow maps, restore the viewport, and begin to 
 	render the scene. */
@@ -407,13 +434,16 @@ void render(void) {
 	For each shadow-casting light, we must also connect its shadow map. */
 	lightRender(&light, lightPosLoc, lightColLoc, lightAttLoc, lightDirLoc, 
 		lightCosLoc);
+	lightRender(&pinkLight, pinkPosLoc, pinkColLoc, pinkAttLoc, pinkDirLoc, 
+		pinkCosLoc);
 	shadowRender(&sdwMap, viewingSdwLoc, GL_TEXTURE7, 7, textureSdwLoc);
-	shadowRender(&pinkMap, viewingSdwLoc, GL_TEXTURE7, 7, texturePinkLoc);
+	shadowRender(&pinkMap, viewingPinkLoc, GL_TEXTURE8, 8, texturePinkLoc);
 	GLuint unifDims[1] = {3};
 	sceneRender(&nodeH, identity, modelingLoc, 1, unifDims, unifLocs, 0, 
 		textureLocs);
 	/* For each shadow-casting light, turn it off when finished rendering. */
 	shadowUnrender(GL_TEXTURE7);
+	shadowUnrender(GL_TEXTURE8);
 }
 
 int main(void) {
@@ -469,7 +499,6 @@ int main(void) {
     }
     /* Deallocate more resources than ever. */
     shadowProgramDestroy(&sdwProg);
-    shadowProgramDestroy(&sdwPink);
     shadowMapDestroy(&sdwMap);
     shadowMapDestroy(&pinkMap);
     glDeleteProgram(program);

@@ -202,15 +202,13 @@ GLchar fragmentCode[] = "\
         float ambInt = 0.1;\
         if (diffInt <= ambInt)\
             diffInt = ambInt;\
-        vec3 diffLight = diffInt * lightCol * surfCol;\
         float shininess = 64.0;\
         vec3 specLight = pow(specInt / a, shininess) * lightCol * specular;\
-        if (cos >= cosAngle){\
-        	fragColor = vec4(diffLight+specLight, 1.0);\
-        }else{\
-            fragColor = vec4(diffLight+specLight,1.0)*0.2;\
-        }\
-    }";
+        if (cos < cosAngle)\
+        	diffInt = 0.0;\
+        vec3 diffLight = diffInt * lightCol * surfCol;\
+        fragColor = vec4(diffLight+specLight, 1.0);\
+        }";
 	program = makeProgram(vertexCode, fragmentCode);
 	if (program != 0) {
 		glUseProgram(program);

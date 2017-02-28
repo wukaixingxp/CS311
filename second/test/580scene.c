@@ -19,8 +19,8 @@ struct sceneNode {
 
 /* Initializes a sceneNode struct. The translation and rotation are initialized to trivial values. The user must remember to call sceneDestroy or 
 sceneDestroyRecursively when finished. Returns 0 if no error occurred. */
-int sceneInitialize(sceneNode *node, GLuint unifDim, meshGLMesh *mesh, 
-		sceneNode *firstChild, sceneNode *nextSibling, int texNum) {
+int sceneInitialize(sceneNode *node, GLuint unifDim, int texNum, meshGLMesh *mesh, 
+		sceneNode *firstChild, sceneNode *nextSibling) {
 	node->texNum = texNum;
 	node->unif = (GLdouble *)malloc(unifDim * sizeof(GLdouble) + 
         node->texNum * sizeof(texTexture *));
@@ -54,7 +54,9 @@ void sceneSetUniform(sceneNode *node, double unif[]) {
 }
 
 void sceneSetTexture(sceneNode *node, texTexture **tex) {
-	node->tex = tex;
+	for (int i = 0; i < node->texNum; i++){
+	node->tex[i] = tex[i];
+	}
 }
 /* Sets one uniform in the node, based on its index in the unif array. */
 void sceneSetOneUniform(sceneNode *node, int index, double unif) {
@@ -153,8 +155,7 @@ modelingLoc. The attribute information exists to be passed to meshGLRender. The
 uniform information is analogous, but sceneRender loads it, not meshGLRender. */
 void sceneRender(sceneNode *node, GLdouble parent[4][4], GLint modelingLoc, 
 		GLuint unifNum, GLuint unifDims[], GLint unifLocs[], 
-		GLuint attrNum, GLuint attrDims[], GLint attrLocs[],
-		GLint textureLocs[]) {
+		GLuint index, GLint textureLocs[]) {
 	/* Set the uniform modeling matrix. */
 	double isometry[4][4];
 	double m[4][4];
@@ -166,28 +167,28 @@ void sceneRender(sceneNode *node, GLdouble parent[4][4], GLint modelingLoc,
 	// Set the texture
 	for (int i = 0; i < node->texNum; i++){
 		if (i == 0){
-			texRender(node->tex[i], GL_TEXTURE0, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE0, i, textureLocs[i]);
 		}
 		if (i == 1){
-			texRender(node->tex[i], GL_TEXTURE1, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE1, i, textureLocs[i]);
 		}
 		if (i == 2){
-			texRender(node->tex[i], GL_TEXTURE2, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE2, i, textureLocs[i]);
 		}
 		if (i == 3){
-			texRender(node->tex[i], GL_TEXTURE3, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE3, i, textureLocs[i]);
 		}
 		if (i == 4){
-			texRender(node->tex[i], GL_TEXTURE4, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE4, i, textureLocs[i]);
 		}
 		if (i == 5){
-			texRender(node->tex[i], GL_TEXTURE5, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE5, i, textureLocs[i]);
 		}
 		if (i == 6){
-			texRender(node->tex[i], GL_TEXTURE6, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE6, i, textureLocs[i]);
 		}
 		if (i == 7){
-			texRender(node->tex[i], GL_TEXTURE7, i, textureLocs[0]);
+			texRender(node->tex[i], GL_TEXTURE7, i, textureLocs[i]);
 		}
 	}
 	/* Set the other uniforms. The casting from double to float is annoying. */
@@ -208,11 +209,8 @@ void sceneRender(sceneNode *node, GLdouble parent[4][4], GLint modelingLoc,
 		}
 	}
 	/* Render the mesh, the children, and the younger siblings. */
-	meshGLRender(node->meshGL, attrNum, attrDims, attrLocs);
+	meshGLRender(node->meshGL, index);
 	for (int i = 0; i < node->texNum; i++){
-		texUnrender(node->tex[i], GL_TEXTURE0);
-	}
-		for (int i = 0; i < node->texNum; i++){
 		if (i == 0){
 			texUnrender(node->tex[i], GL_TEXTURE0);
 		}
@@ -239,10 +237,10 @@ void sceneRender(sceneNode *node, GLdouble parent[4][4], GLint modelingLoc,
 		}
 	}
 	if (node->firstChild != NULL) {
-		sceneRender(node->firstChild, m, modelingLoc, unifNum, unifDims, unifLocs, attrNum, attrDims, attrLocs, textureLocs);
+		sceneRender(node->firstChild, m, modelingLoc, unifNum, unifDims, unifLocs, index, textureLocs);
 	}
 	if (node->nextSibling != NULL) {
-		sceneRender(node->nextSibling, parent, modelingLoc, unifNum, unifDims, unifLocs, attrNum, attrDims, attrLocs, textureLocs);
+		sceneRender(node->nextSibling, parent, modelingLoc, unifNum, unifDims, unifLocs, index, textureLocs);
 	}
 
 }
